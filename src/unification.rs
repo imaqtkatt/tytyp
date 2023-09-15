@@ -3,7 +3,7 @@ use crate::types::{Hole, HoleKind, Type, TypeKind};
 /// Verifies if we are unifying with an infite Type.
 pub fn occurs_check(hole: Hole, t: Type) -> bool {
   match &*t {
-    TypeKind::Var(_) => false,
+    TypeKind::Var(_) | TypeKind::Generalized(_) => false,
     TypeKind::Hole(inner) => inner.clone() == hole,
     TypeKind::Arrow(t1, t2) => {
       occurs_check(hole.clone(), t1.clone()) || occurs_check(hole, t2.clone())

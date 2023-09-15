@@ -1,4 +1,7 @@
-use std::{cell::RefCell, collections::HashMap};
+use std::{
+  cell::{Ref, RefCell},
+  collections::HashMap,
+};
 
 use crate::{
   expr::{self, Expr, ExprKind},
@@ -49,30 +52,6 @@ impl Context {
     *self.current_level.borrow_mut() -= 1;
   }
 
-  /// Returns a free variable that is not defined inside an expression.
-  pub fn free_vars(&self, t: Type) -> Vec<String> {
-    match &*t {
-      TypeKind::Var(_) => vec![],
-      TypeKind::Arrow(t1, t2) => {
-        let mut t1_free_vars = self.free_vars(t1.clone());
-        let mut t2_free_vars = self.free_vars(t2.clone());
-        t1_free_vars.append(&mut t2_free_vars);
-
-        t1_free_vars
-      }
-      TypeKind::Hole(hole) => match &*hole.0.borrow() {
-        HoleKind::Filled(t) => self.free_vars(t.clone()),
-        HoleKind::Empty(name, level) => {
-          if *level > *self.current_level.borrow() {
-            vec![name.clone()]
-          } else {
-            vec![]
-          }
-        }
-      },
-    }
-  }
-
   /// The instantiation transforms a PolyType into a MonoType.
   pub fn instantiate(&self, scheme: Scheme) -> Type {
     let substitutions = scheme
@@ -86,11 +65,37 @@ impl Context {
 
   /// The generalization transforms a MonoType into a PolyType.
   pub fn generalize(&self, t: Type) -> Scheme {
-    let mut free_vars = self.free_vars(t.clone());
-    free_vars.dedup();
-    free_vars.sort();
+    // let mut free_vars = self.free_vars(t.clone());
+    // free_vars.dedup();
+    // free_vars.sort();
 
-    Scheme::new(free_vars, t)
+    let mut counter = 0;
+    let level = self.current_level.borrow();
+
+    fn gen(t: Type, level: &Ref<'_, u32>, counter: &mut u32) {
+      match &*t {
+        TypeKind::Hole(inner) => match inner.get() {
+          HoleKind::Empty(_, hole_level) if hole_level > **level => {
+            *counter += 1;
+            let generalized = TypeKind::Generalized(*counter);
+            inner.fill_with(Type::new(generalized))
+          }
+          HoleKind::Empty(_, _) => (),
+          HoleKind::Filled(t) => gen(t, level, counter),
+        },
+        TypeKind::Arrow(t1, t2) => {
+          gen(t1.clone(), level, counter);
+          gen(t2.clone(), level, counter);
+        }
+        _ => (),
+      };
+    }
+
+    gen(t.clone(), &level, &mut counter);
+
+    let binds = (0..counter).map(|_| self.new_name()).collect::<Vec<_>>();
+
+    Scheme::new(binds, t)
   }
 
   pub fn infer(&mut self, expr: Expr) -> (Expr, Type) {

@@ -10,7 +10,7 @@ pub mod unification;
 
 use ExprKind::*;
 
-use crate::expr::{Expr, Lit::String};
+use crate::expr::{Expr, Lit::*};
 
 fn main() {
   // id = λx. x
@@ -28,6 +28,27 @@ fn main() {
       body: Var { name: "a".into() }.into(),
     }
     .into(),
+  }
+  .into();
+
+  let apply: Expr = Lam {
+    var: "f".into(),
+    body: Lam {
+      var: "arg".into(),
+      body: App {
+        fun: Var { name: "f".into() }.into(),
+        arg: Var { name: "arg".into() }.into(),
+      }
+      .into(),
+    }
+    .into(),
+  }
+  .into();
+
+  // (fst 1)
+  let fst_applied_to_one: Expr = App {
+    fun: fst.clone(),
+    arg: Lit { val: Int(1) }.into(),
   }
   .into();
 
@@ -55,8 +76,8 @@ fn main() {
 
   let mut ctx = Context::default();
 
-  let (e, t) = ctx.infer(let_id_in_id_id);
+  let (e, t) = ctx.infer(apply);
   let t = t.force();
 
-  println!("{e:?}\n|-\n{t:?}");
+  println!("{e}\n|-\n{t}");
 }

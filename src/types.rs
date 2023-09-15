@@ -1,10 +1,11 @@
-use std::{cell::RefCell, rc::Rc};
+use std::{cell::RefCell, fmt::Display, rc::Rc};
 
 /// Represents a "MonoType".
 #[derive(Clone, Debug)]
 pub enum TypeKind {
   Var(String),
   Hole(Hole),
+  Generalized(u32),
   Arrow(Type, Type),
 }
 
@@ -81,6 +82,7 @@ impl TypeKind {
   pub fn instantiate(self: Type, substitutions: &[Type]) -> Type {
     match &&*self {
       TypeKind::Var(_) => self.clone(),
+      TypeKind::Generalized(n) => substitutions[*n as usize].clone(),
       TypeKind::Arrow(t1, t2) => {
         let t1 = t1.clone().instantiate(substitutions);
         let t2 = t2.clone().instantiate(substitutions);
@@ -108,5 +110,37 @@ impl TypeKind {
       },
       _ => Type::new(self.clone()),
     }
+  }
+}
+
+impl Display for TypeKind {
+  fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+    match self {
+      TypeKind::Var(name) => write!(f, "{name}"),
+      TypeKind::Hole(inner) => match inner.get() {
+        HoleKind::Filled(t) => write!(f, "{t}"),
+        HoleKind::Empty(id, _) => write!(f, "{id}"),
+      },
+      TypeKind::Generalized(n) => write!(f, "gen_{n}"),
+      TypeKind::Arrow(t1, t2) => {
+        if need_parens(t1.clone()) {
+          write!(f, "({t1}) -> {t2}")
+        } else {
+          write!(f, "{t1} -> {t2}")
+        }
+      }
+    }
+  }
+}
+
+#[inline(always)]
+fn need_parens(t: Type) -> bool {
+  match *t {
+    TypeKind::Arrow(_, _) => true,
+    TypeKind::Hole(inner) => match inner.get() {
+      HoleKind::Filled(t) => need_parens(t),
+      HoleKind::Empty(_, _) => false,
+    },
+    _ => false,
   }
 }
