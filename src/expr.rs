@@ -1,5 +1,6 @@
 use std::fmt::{Debug, Display};
 
+/// Lit is a literal type.
 #[derive(Clone, Debug)]
 pub enum Lit {
   Int(i32),
@@ -7,6 +8,7 @@ pub enum Lit {
   String(String),
 }
 
+/// Represents the tree we want to type check.
 #[derive(Clone, Debug)]
 pub enum ExprKind {
   Var {
@@ -30,6 +32,8 @@ pub enum ExprKind {
   },
 }
 
+// Same thing occurs in Type, we need to point it
+// to the heap memory.
 pub type Expr = Box<ExprKind>;
 
 impl Display for Lit {

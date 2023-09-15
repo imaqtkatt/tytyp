@@ -1,6 +1,6 @@
 use std::{cell::RefCell, fmt::Display, rc::Rc};
 
-/// Represents a "MonoType".
+/// Represents a MonoType.
 #[derive(Clone, Debug)]
 pub enum TypeKind {
   Var(String),
@@ -9,6 +9,8 @@ pub enum TypeKind {
   Arrow(Type, Type),
 }
 
+// As a TypeKind is recursive and have multiple sizes,
+// we need to point it to the heap memory.
 pub type Type = Box<TypeKind>;
 
 // Literal types
@@ -37,7 +39,7 @@ pub enum HoleKind {
 pub struct Hole(pub Rc<RefCell<HoleKind>>);
 
 impl Hole {
-  /// Fills an empty Hole with the given `typ`.
+  /// Fills an empty Hole with the given [Type].
   pub fn fill_with(&self, t: Type) {
     *self.0.borrow_mut() = HoleKind::Filled(t)
   }
@@ -65,7 +67,11 @@ impl PartialEq for Hole {
 
 impl Eq for Hole {}
 
-/// Represents a generic type, like what happens in the identity function.
+/// Represents a Polymorphic Type, like what happens in the identity function.
+///
+/// ```
+/// id : forall a. a -> a
+/// ```
 #[derive(Clone)]
 pub struct Scheme {
   pub binds: Vec<String>,
@@ -93,22 +99,6 @@ impl TypeKind {
         HoleKind::Filled(t) => t.clone().instantiate(substitutions),
         HoleKind::Empty(_, _) => self.clone(),
       },
-    }
-  }
-}
-
-impl TypeKind {
-  /// Tries to return the type inside of a hole.
-  pub fn force(self) -> Type {
-    match self {
-      TypeKind::Hole(inner) => match inner.get() {
-        HoleKind::Filled(t) => t,
-        HoleKind::Empty(name, level) => {
-          let hole = Hole::new(name, level);
-          Type::new(Self::Hole(hole))
-        }
-      },
-      _ => Type::new(self.clone()),
     }
   }
 }

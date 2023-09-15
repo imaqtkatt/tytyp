@@ -66,7 +66,7 @@ fn main() {
 
   // (id "hey!")
   let app_identity_string: Expr = App {
-    fun: identity,
+    fun: identity.clone(),
     arg: Lit {
       val: String("hey!".into()),
     }
@@ -77,7 +77,6 @@ fn main() {
   let mut ctx = Context::default();
 
   let (e, t) = ctx.infer(apply);
-  let t = t.force();
 
   println!("{e}\n|-\n{t}");
 }

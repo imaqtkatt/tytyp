@@ -65,10 +65,6 @@ impl Context {
 
   /// The generalization transforms a MonoType into a PolyType.
   pub fn generalize(&self, t: Type) -> Scheme {
-    // let mut free_vars = self.free_vars(t.clone());
-    // free_vars.dedup();
-    // free_vars.sort();
-
     let mut counter = 0;
     let level = self.current_level.borrow();
 
@@ -112,6 +108,10 @@ impl Context {
       }
       // If it is a Var, we need to check the existence of the variable
       // in our context and instantiate it.
+      //
+      //  if name : S existing in Γ
+      // ---------------------------
+      //        name : inst(S)
       ExprKind::Var { name } => {
         let scheme = match self.types.get(name).cloned() {
           Some(t) => t,
@@ -120,8 +120,12 @@ impl Context {
         let instantiated = self.instantiate(scheme);
         (expr, instantiated)
       }
-      // If it is a Lambda, we need to generate a new Scheme and add the
+      // If it is a Lambda, we need to generate a new Scheme and extend
       // [var => scheme] to a new context and infer the body.
+      //
+      //  t = hole.  extend Γ, var : t, infer(body) : t'
+      // ------------------------------------------------
+      //             (λvar. body) : t -> t'
       ExprKind::Lam { var, body } => {
         let hole = self.new_hole_type();
         let scheme = Scheme::new(vec![], hole.clone());
@@ -134,6 +138,15 @@ impl Context {
         let fun_t = TypeKind::Arrow(hole, body_t);
         (expr, Type::new(fun_t))
       }
+      // If it is an App, we need to infer both function and argument.
+      // The function type needs to be `t -> t'`, because of that, we
+      // need to unify it with a new arrow type from `arg_t -> hole`.
+      //
+      //  infer(fun) : fun_t, infer(arg_t) : arg_t, t' = hole
+      // -----------------------------------------------------
+      //             unify(fun_t, arg_t -> t')
+      //            ---------------------------
+      //                   (fun arg) : t'
       ExprKind::App { fun, arg } => {
         let (_, fun_t) = self.infer(fun.clone());
         let (_, arg_t) = self.infer(arg.clone());
@@ -145,8 +158,12 @@ impl Context {
         unify(fun_t, arrow_t.clone());
         (expr, hole)
       }
-      // If it is a Let expr, we need to increment our level and generalize the
-      // inferred value and add it to a new context to infer the next expr.
+      // If it is a Let expr, we need to increment our level, generalize the
+      // inferred value and extend it to a new context to infer the next expr.
+      //
+      //  infer(val) : val_t. extend Γ, binding : gen(val_t), infer(next) : t'
+      // ----------------------------------------------------------------------
+      //                  (let binding = val in next) : t'
       ExprKind::Let { binding, val, next } => {
         self.enter_level();
         let (_, val_t) = self.infer(val.clone());
