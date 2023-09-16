@@ -12,7 +12,7 @@ use ExprKind::*;
 
 use crate::expr::{Expr, Lit::*};
 
-fn main() {
+fn main() -> Result<(), std::string::String> {
   // id = λx. x
   let identity: Expr = Lam {
     var: "x".into(),
@@ -74,9 +74,27 @@ fn main() {
   }
   .into();
 
+  let id_bool: Expr = LamTyp {
+    var: "s".into(),
+    t: types::bool(),
+    body: Var { name: "s".into() }.into(),
+  }
+  .into();
+
+  let id_bool_int: Expr = App {
+    fun: id_bool.clone(),
+    arg: Lit {
+      val: String("why?".into()),
+    }
+    .into(),
+  }
+  .into();
+
   let mut ctx = Context::default();
 
-  let (e, t) = ctx.infer(apply);
+  let (e, t) = ctx.infer(id_bool_int)?;
 
   println!("{e}\n|-\n{t}");
+
+  Ok(())
 }

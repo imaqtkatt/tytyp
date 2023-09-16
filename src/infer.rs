@@ -28,6 +28,8 @@ impl Default for Context {
   }
 }
 
+type InferResult = Result<(Expr, Type), String>;
+
 impl Context {
   /// Returns a new name based on the current id and level.
   pub fn new_hole_type(&self) -> Type {
@@ -94,7 +96,7 @@ impl Context {
     Scheme::new(binds, t)
   }
 
-  pub fn infer(&mut self, expr: Expr) -> (Expr, Type) {
+  pub fn infer(&mut self, expr: Expr) -> InferResult {
     match &*expr {
       // Literals are the easiest ones,
       // we already know their types!
@@ -104,7 +106,7 @@ impl Context {
           expr::Lit::Bool(_) => types::bool(),
           expr::Lit::String(_) => types::string(),
         };
-        (expr, t)
+        Ok((expr, t))
       }
       // If it is a Var, we need to check the existence of the variable
       // in our context and instantiate it.
@@ -118,7 +120,7 @@ impl Context {
           None => panic!("Cannot infer '{name}'"),
         };
         let instantiated = self.instantiate(scheme);
-        (expr, instantiated)
+        Ok((expr, instantiated))
       }
       // If it is a Lambda, we need to generate a new Scheme and extend
       // [var => scheme] to a new context and infer the body.
@@ -133,10 +135,20 @@ impl Context {
         let mut new_env = self.clone();
         new_env.types.insert(var.clone(), scheme);
 
-        let (_, body_t) = new_env.infer(body.clone());
+        let (_, body_t) = new_env.infer(body.clone())?;
 
         let fun_t = TypeKind::Arrow(hole, body_t);
-        (expr, Type::new(fun_t))
+        Ok((expr, Type::new(fun_t)))
+      }
+      ExprKind::LamTyp { var, t, body } => {
+        let generalized = self.generalize(t.clone());
+
+        self.types.insert(var.clone(), generalized.clone());
+
+        let (_, body_t) = self.infer(body.clone())?;
+
+        let fun_t = TypeKind::Arrow(t.clone(), body_t);
+        Ok((expr, Type::new(fun_t)))
       }
       // If it is an App, we need to infer both function and argument.
       // The function type needs to be `t -> t'`, because of that, we
@@ -148,15 +160,15 @@ impl Context {
       //            ---------------------------
       //                   (fun arg) : t'
       ExprKind::App { fun, arg } => {
-        let (_, fun_t) = self.infer(fun.clone());
-        let (_, arg_t) = self.infer(arg.clone());
+        let (_, fun_t) = self.infer(fun.clone())?;
+        let (_, arg_t) = self.infer(arg.clone())?;
 
         let hole = self.new_hole_type();
 
         let arrow_t = Type::new(TypeKind::Arrow(arg_t, hole.clone()));
 
-        unify(fun_t, arrow_t.clone());
-        (expr, hole)
+        unify(fun_t, arrow_t.clone())?;
+        Ok((expr, hole))
       }
       // If it is a Let expr, we need to increment our level, generalize the
       // inferred value and extend it to a new context to infer the next expr.
@@ -166,7 +178,7 @@ impl Context {
       //                  (let binding = val in next) : t'
       ExprKind::Let { binding, val, next } => {
         self.enter_level();
-        let (_, val_t) = self.infer(val.clone());
+        let (_, val_t) = self.infer(val.clone())?;
         self.exit_level();
 
         let val_generalized = self.generalize(val_t);
@@ -174,9 +186,9 @@ impl Context {
         let mut new_env = self.clone();
         new_env.types.insert(binding.clone(), val_generalized);
 
-        let (_, next_t) = new_env.infer(next.clone());
+        let (_, next_t) = new_env.infer(next.clone())?;
 
-        (expr, next_t)
+        Ok((expr, next_t))
       }
     }
   }

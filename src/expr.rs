@@ -1,5 +1,7 @@
 use std::fmt::{Debug, Display};
 
+use crate::types::Type;
+
 /// Lit is a literal type.
 #[derive(Clone, Debug)]
 pub enum Lit {
@@ -19,6 +21,11 @@ pub enum ExprKind {
   },
   Lam {
     var: String,
+    body: Expr,
+  },
+  LamTyp {
+    var: String,
+    t: Type,
     body: Expr,
   },
   App {
@@ -52,6 +59,9 @@ impl Display for ExprKind {
       Self::Var { name } => write!(f, "{name}"),
       Self::Lit { val } => write!(f, "{val}"),
       Self::Lam { var, body } => write!(f, "λ{var}. {body}"),
+      Self::LamTyp { var, t, body } => {
+        write!(f, "λ{var}:{t}. {body}")
+      }
       Self::App { fun, arg } => write!(f, "({fun} {arg})"),
       Self::Let { binding, val, next } => {
         write!(f, "let {binding} = {val} in\n  {next}")
