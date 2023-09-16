@@ -141,11 +141,12 @@ impl Context {
         Ok((expr, Type::new(fun_t)))
       }
       ExprKind::LamTyp { var, t, body } => {
-        let generalized = self.generalize(t.clone());
+        let mut new_env = self.clone();
+        let generalized = new_env.generalize(t.clone());
 
-        self.types.insert(var.clone(), generalized.clone());
+        new_env.types.insert(var.clone(), generalized.clone());
 
-        let (_, body_t) = self.infer(body.clone())?;
+        let (_, body_t) = new_env.infer(body.clone())?;
 
         let fun_t = TypeKind::Arrow(t.clone(), body_t);
         Ok((expr, Type::new(fun_t)))
