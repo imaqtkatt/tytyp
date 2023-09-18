@@ -37,7 +37,7 @@ pub fn unify_hole(hole: Hole, t: Type, flip: bool) -> UnifyResult {
   match hole.get() {
     HoleKind::Empty(_, _) => {
       if occurs_check(hole.clone(), t.clone()) {
-        panic!("Occurs check")
+        Err("Occurs check".into())
       } else {
         hole.fill_with(t);
         Ok(())

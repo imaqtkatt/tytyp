@@ -125,9 +125,9 @@ impl Context {
       // If it is a Lambda, we need to generate a new Scheme and extend
       // [var => scheme] to a new context and infer the body.
       //
-      //  t = hole.  extend Γ, var : t, infer(body) : t'
-      // ------------------------------------------------
-      //             (λvar. body) : t -> t'
+      //  t = hole.  extend Γ, var : t, infer(body) : body_t
+      // ----------------------------------------------------
+      //               (λvar. body) : t -> body_t
       ExprKind::Lam { var, body } => {
         let hole = self.new_hole_type();
         let scheme = Scheme::new(vec![], hole.clone());
@@ -140,6 +140,11 @@ impl Context {
         let fun_t = TypeKind::Arrow(hole, body_t);
         Ok((expr, Type::new(fun_t)))
       }
+      // if it is a Typed Lambda, we already know the type of the var.
+      //
+      //  var : t.  extend Γ, var : gen(t), infer(body) : body_t
+      // --------------------------------------------------------
+      //              (λvar. body) : t -> body_t
       ExprKind::LamTyp { var, t, body } => {
         let mut new_env = self.clone();
         let generalized = new_env.generalize(t.clone());
@@ -155,11 +160,11 @@ impl Context {
       // The function type needs to be `t -> t'`, because of that, we
       // need to unify it with a new arrow type from `arg_t -> hole`.
       //
-      //  infer(fun) : fun_t, infer(arg_t) : arg_t, t' = hole
+      //  infer(fun) : fun_t, infer(arg_t) : arg_t, hole = t'
       // -----------------------------------------------------
-      //             unify(fun_t, arg_t -> t')
-      //            ---------------------------
-      //                   (fun arg) : t'
+      //              unify(fun_t, arg_t -> hole)
+      //             -----------------------------
+      //                     (fun arg) : t'
       ExprKind::App { fun, arg } => {
         let (_, fun_t) = self.infer(fun.clone())?;
         let (_, arg_t) = self.infer(arg.clone())?;
