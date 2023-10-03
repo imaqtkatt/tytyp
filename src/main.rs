@@ -10,7 +10,7 @@ pub mod unification;
 
 use ExprKind::*;
 
-use crate::expr::{Expr, Lit::*};
+use crate::expr::{Annot, Expr, Lit::*};
 
 fn main() -> Result<(), std::string::String> {
   // id = λx. x
@@ -75,13 +75,15 @@ fn main() -> Result<(), std::string::String> {
   .into();
 
   let id_bool: Expr = LamTyp {
-    var: "s".into(),
-    t: types::bool(),
-    body: Var { name: "s".into() }.into(),
+    annot: Annot {
+      var: "b".into(),
+      t: types::bool(),
+    },
+    body: Var { name: "b".into() }.into(),
   }
   .into();
 
-  let id_bool_int: Expr = App {
+  let app_id_bool_to_string: Expr = App {
     fun: id_bool.clone(),
     arg: Lit {
       val: String("why?".into()),
@@ -90,9 +92,38 @@ fn main() -> Result<(), std::string::String> {
   }
   .into();
 
+  let let_batata_annot_string_in_batata: Expr = LetTyp {
+    annot: Annot {
+      var: "batata".into(),
+      t: types::string(),
+    },
+    val: Lit {
+      val: String("pure de batata".into()),
+    }
+    .into(),
+    next: Var {
+      name: "batata".into(),
+    }
+    .into(),
+  }
+  .into();
+
+  let let_batata_annot_int_in_batata: Expr = LetTyp {
+    annot: Annot {
+      var: "batata".into(),
+      t: types::string(),
+    },
+    val: Lit { val: Int(42) }.into(),
+    next: Var {
+      name: "batata".into(),
+    }
+    .into(),
+  }
+  .into();
+
   let mut ctx = Context::default();
 
-  let (e, t) = ctx.infer(id_bool_int)?;
+  let (e, t) = ctx.infer(let_batata_annot_int_in_batata)?;
 
   println!("{e}\n|-\n{t}");
 

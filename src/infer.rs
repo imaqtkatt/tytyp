@@ -4,7 +4,7 @@ use std::{
 };
 
 use crate::{
-  expr::{self, Expr, ExprKind},
+  expr::{self, Annot, Expr, ExprKind},
   types::{self, Hole, HoleKind, Scheme, Type, TypeKind},
   unification::unify,
 };
@@ -145,7 +145,11 @@ impl Context {
       //  var : t.  extend Γ, var : gen(t), infer(body) : body_t
       // --------------------------------------------------------
       //              (λvar. body) : t -> body_t
-      ExprKind::LamTyp { var, t, body } => {
+      // ExprKind::LamTyp { var, t, body } => {
+      ExprKind::LamTyp {
+        annot: Annot { var, t },
+        body,
+      } => {
         let mut new_env = self.clone();
         let generalized = new_env.generalize(t.clone());
 
@@ -191,6 +195,23 @@ impl Context {
 
         let mut new_env = self.clone();
         new_env.types.insert(binding.clone(), val_generalized);
+
+        let (_, next_t) = new_env.infer(next.clone())?;
+
+        Ok((expr, next_t))
+      }
+      ExprKind::LetTyp {
+        annot: Annot { var, t },
+        val,
+        next,
+      } => {
+        let (_, val_t) = self.infer(val.clone())?;
+        unify(val_t, t.clone())?;
+
+        let t_annot_gen = self.generalize(t.clone());
+
+        let mut new_env = self.clone();
+        new_env.types.insert(var.clone(), t_annot_gen);
 
         let (_, next_t) = new_env.infer(next.clone())?;
 

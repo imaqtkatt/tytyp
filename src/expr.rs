@@ -10,6 +10,12 @@ pub enum Lit {
   String(String),
 }
 
+#[derive(Clone, Debug)]
+pub struct Annot {
+  pub var: String,
+  pub t: Type,
+}
+
 /// Represents the tree we want to type check.
 #[derive(Clone, Debug)]
 pub enum ExprKind {
@@ -24,9 +30,13 @@ pub enum ExprKind {
     body: Expr,
   },
   LamTyp {
-    var: String,
-    t: Type,
+    annot: Annot,
     body: Expr,
+  },
+  LetTyp {
+    annot: Annot,
+    val: Expr,
+    next: Expr,
   },
   App {
     fun: Expr,
@@ -59,8 +69,18 @@ impl Display for ExprKind {
       Self::Var { name } => write!(f, "{name}"),
       Self::Lit { val } => write!(f, "{val}"),
       Self::Lam { var, body } => write!(f, "λ{var}. {body}"),
-      Self::LamTyp { var, t, body } => {
-        write!(f, "λ{var}:{t}. {body}")
+      Self::LamTyp {
+        annot: Annot { var, t },
+        body,
+      } => {
+        write!(f, "λ{var} : {t}. {body}")
+      }
+      Self::LetTyp {
+        annot: Annot { var, t },
+        val,
+        next,
+      } => {
+        write!(f, "let ({var} : {t}) = {val} in\n  {next}")
       }
       Self::App { fun, arg } => write!(f, "({fun} {arg})"),
       Self::Let { binding, val, next } => {
