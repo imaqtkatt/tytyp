@@ -74,9 +74,9 @@ impl Context {
       match &*t {
         TypeKind::Hole(inner) => match inner.get() {
           HoleKind::Empty(_, hole_level) if hole_level > **level => {
+            let curr_level = *counter;
             *counter += 1;
-            let generalized = TypeKind::Generalized(*counter);
-            inner.fill_with(Type::new(generalized))
+            inner.fill_with(Type::new(TypeKind::Generalized(curr_level)))
           }
           HoleKind::Empty(_, _) => (),
           HoleKind::Filled(t) => gen(t, level, counter),

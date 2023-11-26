@@ -121,9 +121,20 @@ fn main() -> Result<(), std::string::String> {
   }
   .into();
 
+  let r#let = Let {
+    binding: "bar".into(),
+    val: Lam {
+      var: "x".into(),
+      body: Var { name: "x".into() }.into(),
+    }
+    .into(),
+    next: Var { name: "bar".into() }.into(),
+  }
+  .into();
+
   let mut ctx = Context::default();
 
-  let (e, t) = ctx.infer(let_batata_annot_int_in_batata)?;
+  let (e, t) = ctx.infer(r#let)?;
 
   println!("{e}\n|-\n{t}");
 
